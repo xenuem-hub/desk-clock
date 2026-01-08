@@ -1,3 +1,53 @@
+// ---------- Build tick marks and numbers ----------
+function buildTicksAndNumbers() {
+  const ticks = document.getElementById("ticks");
+  const numbers = document.getElementById("numbers");
+  if (!ticks || !numbers) return;
+
+  ticks.innerHTML = "";
+  numbers.innerHTML = "";
+
+  // 60 tick marks
+  for (let i = 0; i < 60; i++) {
+    const t = document.createElement("div");
+    const isHour = (i % 5 === 0);
+    t.className = isHour ? "tick hour" : "tick";
+
+    // Place tick so it sits near the rim.
+    // We rotate around center, then translate upward.
+    const deg = i * 6; // 360/60
+    const radius = isHour ? 44 : 46; // percent of clock radius
+    t.style.transform = `rotate(${deg}deg) translateY(-${radius}%)`;
+
+    ticks.appendChild(t);
+  }
+
+  // 12 numbers
+  for (let n = 1; n <= 12; n++) {
+    const el = document.createElement("div");
+    el.className = "num";
+    el.textContent = String(n);
+
+    // Angles: 12 at top => -90 degrees
+    const angleDeg = (n * 30) - 90;
+    const angleRad = angleDeg * (Math.PI / 180);
+
+    // Position numbers using percentage of container.
+    // 0.0 = center, 0.5 = edge. Tune for aesthetics.
+    const r = 0.38;
+    const x = 50 + (Math.cos(angleRad) * r * 100);
+    const y = 50 + (Math.sin(angleRad) * r * 100);
+
+    el.style.left = `${x}%`;
+    el.style.top = `${y}%`;
+
+    numbers.appendChild(el);
+  }
+}
+
+buildTicksAndNumbers();
+window.addEventListener("resize", buildTicksAndNumbers);
+
 // ---------- Clock ----------
 function updateClock() {
   const now = new Date();
@@ -6,9 +56,9 @@ function updateClock() {
   const min = now.getMinutes();
   const hr  = now.getHours() % 12;
 
-  const secDeg = sec * 6;                       // 360 / 60
+  const secDeg = sec * 6;
   const minDeg = (min + sec / 60) * 6;
-  const hrDeg  = (hr + min / 60) * 30;          // 360 / 12
+  const hrDeg  = (hr + min / 60) * 30;
 
   document.getElementById("secondHand").style.transform =
     `translateY(-50%) rotate(${secDeg}deg)`;
@@ -22,7 +72,7 @@ function updateClock() {
 }
 
 updateClock();
-setInterval(updateClock, 250); // smooth enough, low cost
+setInterval(updateClock, 250);
 
 // ---------- Calendar ----------
 let view = new Date();
@@ -39,14 +89,13 @@ function renderCalendar() {
   title.textContent = view.toLocaleDateString(undefined, { year: "numeric", month: "long" });
 
   const firstDay = new Date(year, month, 1);
-  const startDow = firstDay.getDay(); // 0=Sun
+  const startDow = firstDay.getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const prevMonthDays = new Date(year, month, 0).getDate();
   const today = new Date();
   const isThisMonth = today.getFullYear() === year && today.getMonth() === month;
 
-  // 6 rows * 7 days = 42 cells keeps layout stable in landscape.
   for (let i = 0; i < 42; i++) {
     const cell = document.createElement("div");
     cell.className = "cell";
@@ -82,48 +131,3 @@ document.getElementById("nextBtn").addEventListener("click", () => {
 });
 
 renderCalendar();
-
-// ---------- Wake Lock ----------
-let wakeLock = null;
-const wakeBtn = document.getElementById("wakeBtn");
-const wakeStatus = document.getElementById("wakeStatus");
-
-function setStatus(msg) {
-  wakeStatus.textContent = msg;
-}
-
-async function requestWakeLock() {
-  // Screen Wake Lock API requires a secure context (HTTPS) and user gesture.
-  // It can be released when the page is hidden. Re-acquire on visibilitychange.
-  try {
-    if (!("wakeLock" in navigator)) {
-      setStatus("Wake lock not supported here. Use Auto-Lock = Never as fallback.");
-      return;
-    }
-    wakeLock = await navigator.wakeLock.request("screen");
-    setStatus("Screen will stay awake while this page is open.");
-
-    wakeLock.addEventListener("release", () => {
-      setStatus("Wake lock released. Tap the button again if needed.");
-      wakeLock = null;
-    });
-  } catch (err) {
-    setStatus(`Wake lock failed: ${err?.name || "error"}.`);
-  }
-}
-
-wakeBtn.addEventListener("click", requestWakeLock);
-
-document.addEventListener("visibilitychange", async () => {
-  if (document.visibilityState === "visible" && wakeLock) {
-    // Some browsers release wake lock when hidden.
-    // Re-request if you still want it when returning.
-    try {
-      wakeLock = await navigator.wakeLock.request("screen");
-      setStatus("Screen will stay awake while this page is open.");
-    } catch (err) {
-      setStatus(`Wake lock re-request failed: ${err?.name || "error"}.`);
-      wakeLock = null;
-    }
-  }
-});

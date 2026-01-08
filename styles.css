@@ -5,6 +5,8 @@
   --card: rgba(255,255,255,0.08);
   --card2: rgba(255,255,255,0.06);
   --line: rgba(255,255,255,0.18);
+  --tick: rgba(255,255,255,0.35);
+  --tickStrong: rgba(255,255,255,0.65);
 }
 
 * { box-sizing: border-box; }
@@ -35,22 +37,73 @@ body {
   flex: 0 0 46%;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 12px;
 }
 
 .calCard { flex: 1; display: flex; flex-direction: column; }
 
 .clock {
   position: relative;
-  width: min(46vh, 44vw);
+
+  /* Bigger but still safe inside the left card */
+  width: min(56vh, 46vw);
+  max-width: 100%;
   aspect-ratio: 1 / 1;
+
   border-radius: 50%;
   border: 2px solid var(--line);
   margin: 0 auto;
+
   background:
-    radial-gradient(circle at center, rgba(255,255,255,0.10), transparent 60%);
+    radial-gradient(circle at center, rgba(255,255,255,0.12), transparent 58%),
+    radial-gradient(circle at center, rgba(255,255,255,0.06), transparent 72%);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.06) inset;
 }
 
+/* Tick layer */
+.ticks {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.tick {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 10%;
+  background: var(--tick);
+  transform-origin: 50% calc(100% - 2px);
+  border-radius: 999px;
+}
+
+.tick.hour {
+  width: 3px;
+  height: 12%;
+  background: var(--tickStrong);
+}
+
+/* Numbers layer */
+.numbers {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.num {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(14px, 2.2vmin, 20px);
+  color: rgba(255,255,255,0.88);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.5);
+  user-select: none;
+}
+
+/* Hands */
 .hand {
   position: absolute;
   left: 50%;
@@ -59,41 +112,27 @@ body {
   transform: translateY(-50%) rotate(0deg);
   border-radius: 999px;
   background: var(--fg);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
 }
 
-.hand.hour   { width: 28%; height: 6px; }
-.hand.minute { width: 40%; height: 4px; opacity: 0.95; }
+.hand.hour   { width: 28%; height: 7px; opacity: 0.95; }
+.hand.minute { width: 41%; height: 5px; opacity: 0.92; }
 .hand.second { width: 44%; height: 2px; opacity: 0.85; }
 
 .centerDot {
   position: absolute;
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   background: var(--fg);
   border-radius: 50%;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.10);
 }
 
-.clockMeta { margin-top: 12px; text-align: center; }
-.dateLine { font-size: 18px; color: var(--muted); margin-bottom: 10px; }
-
-.wakeBtn {
-  font-size: 16px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--card2);
-  color: var(--fg);
-}
-
-.wakeStatus {
-  margin-top: 8px;
-  font-size: 14px;
-  color: var(--muted);
-  min-height: 18px;
-}
+.clockMeta { text-align: center; }
+.dateLine { font-size: 18px; color: var(--muted); }
 
 .calHeader {
   display: flex;
