@@ -1,5 +1,9 @@
-// ---------- Build tick marks and numbers ----------
-function buildTicksAndNumbers() {
+// Optional: lock the calendar to a specific month for a “demo look”.
+// Set DEMO = { year: 2017, monthIndex: 5 } for June 2017 (monthIndex is 0-11).
+const DEMO = null;
+
+// ---------- Build clock ticks + numbers ----------
+function buildClockFace() {
   const ticks = document.getElementById("ticks");
   const numbers = document.getElementById("numbers");
   if (!ticks || !numbers) return;
@@ -10,13 +14,13 @@ function buildTicksAndNumbers() {
   // 60 tick marks
   for (let i = 0; i < 60; i++) {
     const t = document.createElement("div");
-    const isHour = (i % 5 === 0);
-    t.className = isHour ? "tick hour" : "tick";
+    const isFive = (i % 5 === 0);
+    const isQuarter = (i % 15 === 0);
 
-    // Place tick so it sits near the rim.
-    // We rotate around center, then translate upward.
+    t.className = "tick" + (isFive ? " five" : "") + (isQuarter ? " quarter" : "");
+
     const deg = i * 6; // 360/60
-    const radius = isHour ? 44 : 46; // percent of clock radius
+    const radius = 47; // percent
     t.style.transform = `rotate(${deg}deg) translateY(-${radius}%)`;
 
     ticks.appendChild(t);
@@ -28,13 +32,12 @@ function buildTicksAndNumbers() {
     el.className = "num";
     el.textContent = String(n);
 
-    // Angles: 12 at top => -90 degrees
+    // 12 at top => -90 degrees
     const angleDeg = (n * 30) - 90;
     const angleRad = angleDeg * (Math.PI / 180);
 
-    // Position numbers using percentage of container.
-    // 0.0 = center, 0.5 = edge. Tune for aesthetics.
-    const r = 0.38;
+    // Position numbers similar to iOS clock
+    const r = 0.40; // fraction of radius
     const x = 50 + (Math.cos(angleRad) * r * 100);
     const y = 50 + (Math.sin(angleRad) * r * 100);
 
@@ -45,10 +48,10 @@ function buildTicksAndNumbers() {
   }
 }
 
-buildTicksAndNumbers();
-window.addEventListener("resize", buildTicksAndNumbers);
+buildClockFace();
+window.addEventListener("resize", buildClockFace);
 
-// ---------- Clock ----------
+// ---------- Clock hands ----------
 function updateClock() {
   const now = new Date();
 
@@ -60,74 +63,70 @@ function updateClock() {
   const minDeg = (min + sec / 60) * 6;
   const hrDeg  = (hr + min / 60) * 30;
 
-  document.getElementById("secondHand").style.transform =
-    `translateY(-50%) rotate(${secDeg}deg)`;
-  document.getElementById("minuteHand").style.transform =
-    `translateY(-50%) rotate(${minDeg}deg)`;
-  document.getElementById("hourHand").style.transform =
-    `translateY(-50%) rotate(${hrDeg}deg)`;
+  const hourHand = document.getElementById("hourHand");
+  const minuteHand = document.getElementById("minuteHand");
+  const secondHand = document.getElementById("secondHand");
 
-  document.getElementById("dateLine").textContent =
-    now.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  if (hourHand) hourHand.style.transform = `translateY(-50%) rotate(${hrDeg}deg)`;
+  if (minuteHand) minuteHand.style.transform = `translateY(-50%) rotate(${minDeg}deg)`;
+  if (secondHand) secondHand.style.transform = `translateY(-50%) rotate(${secDeg}deg)`;
 }
 
 updateClock();
 setInterval(updateClock, 250);
 
-// ---------- Calendar ----------
-let view = new Date();
-view.setDate(1);
-
+// ---------- Calendar (StandBy-style month grid) ----------
 function renderCalendar() {
-  const grid = document.getElementById("calGrid");
-  const title = document.getElementById("calTitle");
-  grid.innerHTML = "";
+  const monthTitle = document.getElementById("monthTitle");
+  const calGrid = document.getElementById("calGrid");
+  if (!monthTitle || !calGrid) return;
 
-  const year = view.getFullYear();
-  const month = view.getMonth();
+  const today = new Date();
 
-  title.textContent = view.toLocaleDateString(undefined, { year: "numeric", month: "long" });
+  const base = DEMO
+    ? new Date(DEMO.year, DEMO.monthIndex, 1)
+    : new Date(today.getFullYear(), today.getMonth(), 1);
 
-  const firstDay = new Date(year, month, 1);
-  const startDow = firstDay.getDay();
+  const year = base.getFullYear();
+  const month = base.getMonth();
+
+  monthTitle.textContent = base.toLocaleDateString(undefined, { month: "long" }).toUpperCase();
+
+  const first = new Date(year, month, 1);
+  const startDow = first.getDay(); // 0=Sun
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  const prevMonthDays = new Date(year, month, 0).getDate();
-  const today = new Date();
-  const isThisMonth = today.getFullYear() === year && today.getMonth() === month;
+  calGrid.innerHTML = "";
 
+  // Fill a 6x7 grid (42 cells), like the image layout
   for (let i = 0; i < 42; i++) {
     const cell = document.createElement("div");
-    cell.className = "cell";
-    const dayIndex = i - startDow + 1;
+    cell.className = "dayCell";
 
-    let dayNum;
-    if (dayIndex <= 0) {
-      dayNum = prevMonthDays + dayIndex;
-      cell.classList.add("out");
-    } else if (dayIndex > daysInMonth) {
-      dayNum = dayIndex - daysInMonth;
-      cell.classList.add("out");
+    const dayNum = i - startDow + 1;
+
+    if (dayNum <= 0 || dayNum > daysInMonth) {
+      cell.classList.add("blank");
+      cell.textContent = "0";
     } else {
-      dayNum = dayIndex;
-      if (isThisMonth && dayNum === today.getDate()) {
+      cell.textContent = String(dayNum);
+
+      const isToday =
+        !DEMO &&
+        year === today.getFullYear() &&
+        month === today.getMonth() &&
+        dayNum === today.getDate();
+
+      // If DEMO is enabled, highlight day 5 to mimic the sample image.
+      const isDemoHighlight = !!DEMO && dayNum === 5;
+
+      if (isToday || isDemoHighlight) {
         cell.classList.add("today");
       }
     }
 
-    cell.textContent = String(dayNum);
-    grid.appendChild(cell);
+    calGrid.appendChild(cell);
   }
 }
-
-document.getElementById("prevBtn").addEventListener("click", () => {
-  view = new Date(view.getFullYear(), view.getMonth() - 1, 1);
-  renderCalendar();
-});
-
-document.getElementById("nextBtn").addEventListener("click", () => {
-  view = new Date(view.getFullYear(), view.getMonth() + 1, 1);
-  renderCalendar();
-});
 
 renderCalendar();
