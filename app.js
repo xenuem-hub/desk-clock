@@ -1,127 +1,195 @@
-// Optional: lock the calendar to a specific month for a “demo look”.
-// Set DEMO = { year: 2017, monthIndex: 5 } for June 2017 (monthIndex is 0-11).
-const DEMO = null;
+// Force US Eastern time regardless of the phone’s timezone.
+// If you want “use my phone time”, set TIME_ZONE = null.
+const TIME_ZONE = "America/New_York";
 
-// ---------- Build clock ticks + numbers ----------
+const WEEKDAY_INDEX = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+function partsInTZ(date, timeZone) {
+  const opts = timeZone
+    ? { timeZone, year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", weekday: "short", hourCycle: "h23" }
+    : { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", weekday: "short", hourCycle: "h23" };
+
+  const dtf = new Intl.DateTimeFormat("en-US", opts);
+  const p = dtf.formatToParts(date);
+
+  const get = (type) => p.find(x => x.type === type)?.value;
+  return {
+    year: Number(get("year")),
+    month: Number(get("month")),     // 1-12
+    day: Number(get("day")),
+    hour: Number(get("hour")),
+    minute: Number(get("minute")),
+    second: Number(get("second")),
+    weekday: get("weekday")          // "Mon", etc
+  };
+}
+
+// Find a real Date instant whose formatted TZ date equals the requested Y-M-D.
+// (Used only to get the correct weekday alignment for the calendar.)
+function findInstantForTZDate(year, month1to12, day, timeZone) {
+  // Start near midday UTC to avoid DST edge cases.
+  let dt = new Date(Date.UTC(year, month1to12 - 1, day, 12, 0, 0));
+  const targetKey = year * 10000 + month1to12 * 100 + day;
+
+  for (let i = 0; i < 48; i++) {
+    const p = partsInTZ(dt, timeZone);
+    const key = p.year * 10000 + p.month * 100 + p.day;
+    if (key === targetKey) return dt;
+
+    // Move in the direction that brings the TZ date toward the target.
+    if (key < targetKey) dt = new Date(dt.getTime() + 60 * 60 * 1000);
+    else dt = new Date(dt.getTime() - 60 * 60 * 1000);
+  }
+  return dt;
+}
+
+// ---------- CLOCK FACE (SVG) ----------
 function buildClockFace() {
-  const ticks = document.getElementById("ticks");
-  const numbers = document.getElementById("numbers");
-  if (!ticks || !numbers) return;
+  const tickGroup = document.getElementById("tickGroup");
+  const numGroup = document.getElementById("numGroup");
+  if (!tickGroup || !numGroup) return;
 
-  ticks.innerHTML = "";
-  numbers.innerHTML = "";
+  tickGroup.innerHTML = "";
+  numGroup.innerHTML = "";
 
-  // 60 tick marks
+  const cx = 100, cy = 100;
+
+  // Ticks at the outer rim
   for (let i = 0; i < 60; i++) {
-    const t = document.createElement("div");
-    const isFive = (i % 5 === 0);
+    const isMajor = (i % 5 === 0);
     const isQuarter = (i % 15 === 0);
 
-    t.className = "tick" + (isFive ? " five" : "") + (isQuarter ? " quarter" : "");
+    const outerR = 96;
+    const innerR = isQuarter ? 84 : (isMajor ? 86 : 90);
 
-    const deg = i * 6; // 360/60
-    const radius = 47; // percent
-    t.style.transform = `rotate(${deg}deg) translateY(-${radius}%)`;
+    const ang = (i * 6 - 90) * Math.PI / 180;
+    const x1 = cx + outerR * Math.cos(ang);
+    const y1 = cy + outerR * Math.sin(ang);
+    const x2 = cx + innerR * Math.cos(ang);
+    const y2 = cy + innerR * Math.sin(ang);
 
-    ticks.appendChild(t);
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", x1.toFixed(2));
+    line.setAttribute("y1", y1.toFixed(2));
+    line.setAttribute("x2", x2.toFixed(2));
+    line.setAttribute("y2", y2.toFixed(2));
+    line.setAttribute("class", isQuarter ? "tickQuarter" : (isMajor ? "tickMajor" : "tickMinor"));
+    tickGroup.appendChild(line);
   }
 
-  // 12 numbers
+  // Numbers 1–12
   for (let n = 1; n <= 12; n++) {
-    const el = document.createElement("div");
-    el.className = "num";
-    el.textContent = String(n);
+    const ang = (n * 30 - 90) * Math.PI / 180;
+    const r = 70;
+    const x = cx + r * Math.cos(ang);
+    const y = cy + r * Math.sin(ang);
 
-    // 12 at top => -90 degrees
-    const angleDeg = (n * 30) - 90;
-    const angleRad = angleDeg * (Math.PI / 180);
-
-    // Position numbers similar to iOS clock
-    const r = 0.40; // fraction of radius
-    const x = 50 + (Math.cos(angleRad) * r * 100);
-    const y = 50 + (Math.sin(angleRad) * r * 100);
-
-    el.style.left = `${x}%`;
-    el.style.top = `${y}%`;
-
-    numbers.appendChild(el);
+    const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    t.setAttribute("x", x.toFixed(2));
+    t.setAttribute("y", y.toFixed(2));
+    t.setAttribute("class", "clockNum");
+    t.textContent = String(n);
+    numGroup.appendChild(t);
   }
 }
 
 buildClockFace();
-window.addEventListener("resize", buildClockFace);
 
-// ---------- Clock hands ----------
+// ---------- CLOCK HANDS ----------
+function setHand(id, angleDeg, length, backLength = 0) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  const cx = 100, cy = 100;
+  const ang = (angleDeg - 90) * Math.PI / 180;
+
+  const x2 = cx + length * Math.cos(ang);
+  const y2 = cy + length * Math.sin(ang);
+
+  const x1 = cx - backLength * Math.cos(ang);
+  const y1 = cy - backLength * Math.sin(ang);
+
+  el.setAttribute("x1", x1.toFixed(2));
+  el.setAttribute("y1", y1.toFixed(2));
+  el.setAttribute("x2", x2.toFixed(2));
+  el.setAttribute("y2", y2.toFixed(2));
+}
+
 function updateClock() {
   const now = new Date();
+  const p = partsInTZ(now, TIME_ZONE);
 
-  const sec = now.getSeconds();
-  const min = now.getMinutes();
-  const hr  = now.getHours() % 12;
+  const hr12 = p.hour % 12;
+  const sec = p.second;
+  const min = p.minute;
 
   const secDeg = sec * 6;
   const minDeg = (min + sec / 60) * 6;
-  const hrDeg  = (hr + min / 60) * 30;
+  const hrDeg = (hr12 + min / 60 + sec / 3600) * 30;
 
-  const hourHand = document.getElementById("hourHand");
-  const minuteHand = document.getElementById("minuteHand");
-  const secondHand = document.getElementById("secondHand");
-
-  if (hourHand) hourHand.style.transform = `translateY(-50%) rotate(${hrDeg}deg)`;
-  if (minuteHand) minuteHand.style.transform = `translateY(-50%) rotate(${minDeg}deg)`;
-  if (secondHand) secondHand.style.transform = `translateY(-50%) rotate(${secDeg}deg)`;
+  // Match StandBy proportions: hour shorter, minute longer, second longest
+  setHand("hourHand", hrDeg, 34, 6);
+  setHand("minuteHand", minDeg, 52, 8);
+  setHand("secondHand", secDeg, 62, 10);
 }
 
+// Smooth updates without “trails” (SVG redraws cleanly)
 updateClock();
 setInterval(updateClock, 250);
 
-// ---------- Calendar (StandBy-style month grid) ----------
+// ---------- CALENDAR ----------
 function renderCalendar() {
   const monthTitle = document.getElementById("monthTitle");
   const calGrid = document.getElementById("calGrid");
   if (!monthTitle || !calGrid) return;
 
-  const today = new Date();
+  const now = new Date();
+  const today = partsInTZ(now, TIME_ZONE);
 
-  const base = DEMO
-    ? new Date(DEMO.year, DEMO.monthIndex, 1)
-    : new Date(today.getFullYear(), today.getMonth(), 1);
+  const year = today.year;
+  const month1to12 = today.month;         // 1-12
+  const monthIndex = month1to12 - 1;
 
-  const year = base.getFullYear();
-  const month = base.getMonth();
+  // Month title in Eastern time
+  const monthName = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIME_ZONE || undefined,
+    month: "long"
+  }).format(now);
 
-  monthTitle.textContent = base.toLocaleDateString(undefined, { month: "long" }).toUpperCase();
+  monthTitle.textContent = monthName.toUpperCase();
 
-  const first = new Date(year, month, 1);
-  const startDow = first.getDay(); // 0=Sun
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  // Days in month
+  const daysInMonth = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+
+  // Weekday of the 1st day in the target TZ
+  const firstInstant = TIME_ZONE
+    ? findInstantForTZDate(year, month1to12, 1, TIME_ZONE)
+    : new Date(year, monthIndex, 1);
+
+  const firstWk = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIME_ZONE || undefined,
+    weekday: "short"
+  }).format(firstInstant);
+
+  const startDow = WEEKDAY_INDEX[firstWk] ?? 0; // 0=Sun
 
   calGrid.innerHTML = "";
 
-  // Fill a 6x7 grid (42 cells), like the image layout
+  // 42 cells (6 rows) like StandBy
   for (let i = 0; i < 42; i++) {
+    const dayNum = i - startDow + 1;
+
     const cell = document.createElement("div");
     cell.className = "dayCell";
 
-    const dayNum = i - startDow + 1;
-
-    if (dayNum <= 0 || dayNum > daysInMonth) {
+    if (dayNum < 1 || dayNum > daysInMonth) {
       cell.classList.add("blank");
-      cell.textContent = "0";
+      cell.textContent = ""; // no zeros
     } else {
       cell.textContent = String(dayNum);
 
-      const isToday =
-        !DEMO &&
-        year === today.getFullYear() &&
-        month === today.getMonth() &&
-        dayNum === today.getDate();
-
-      // If DEMO is enabled, highlight day 5 to mimic the sample image.
-      const isDemoHighlight = !!DEMO && dayNum === 5;
-
-      if (isToday || isDemoHighlight) {
-        cell.classList.add("today");
+      if (dayNum === today.day) {
+        cell.classList.add("today"); // orange highlight
       }
     }
 
