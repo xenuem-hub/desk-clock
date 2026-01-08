@@ -14,18 +14,21 @@
 </head>
 <body>
   <main class="screen">
-    <!-- LEFT: CLOCK -->
+    <!-- LEFT: CLOCK (SVG, no “trail” artifacts) -->
     <section class="left" aria-label="Analog clock">
-      <div class="clock" role="img" aria-label="Analog clock face">
-        <div class="ticks" id="ticks" aria-hidden="true"></div>
-        <div class="numbers" id="numbers" aria-hidden="true"></div>
+      <svg class="clockSvg" id="clockSvg" viewBox="0 0 200 200" role="img" aria-label="Analog clock">
+        <g id="tickGroup"></g>
+        <g id="numGroup"></g>
 
-        <div class="hand hour" id="hourHand" aria-hidden="true"></div>
-        <div class="hand minute" id="minuteHand" aria-hidden="true"></div>
+        <!-- Hands -->
+        <line id="hourHand"   x1="100" y1="100" x2="100" y2="100" />
+        <line id="minuteHand" x1="100" y1="100" x2="100" y2="100" />
+        <line id="secondHand" x1="100" y1="100" x2="100" y2="100" />
 
-        <div class="secondHand" id="secondHand" aria-hidden="true"></div>
-        <div class="pivot" aria-hidden="true"></div>
-      </div>
+        <!-- Center -->
+        <circle class="pivotOuter" cx="100" cy="100" r="8.5"></circle>
+        <circle class="pivotInner" cx="100" cy="100" r="3.0"></circle>
+      </svg>
     </section>
 
     <!-- RIGHT: CALENDAR -->
