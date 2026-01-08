@@ -10,40 +10,33 @@
 
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
-
-  <title>Clock + Calendar</title>
+  <title>Clock</title>
 </head>
 <body>
-  <main class="wrap">
-    <section class="clockCard" aria-label="Analog clock">
+  <main class="screen">
+    <!-- LEFT: CLOCK -->
+    <section class="left" aria-label="Analog clock">
       <div class="clock" role="img" aria-label="Analog clock face">
         <div class="ticks" id="ticks" aria-hidden="true"></div>
         <div class="numbers" id="numbers" aria-hidden="true"></div>
 
-        <div class="hand hour" id="hourHand"></div>
-        <div class="hand minute" id="minuteHand"></div>
-        <div class="hand second" id="secondHand"></div>
+        <div class="hand hour" id="hourHand" aria-hidden="true"></div>
+        <div class="hand minute" id="minuteHand" aria-hidden="true"></div>
 
-        <div class="centerDot" aria-hidden="true"></div>
-      </div>
-
-      <div class="clockMeta">
-        <div class="dateLine" id="dateLine"></div>
+        <div class="secondHand" id="secondHand" aria-hidden="true"></div>
+        <div class="pivot" aria-hidden="true"></div>
       </div>
     </section>
 
-    <section class="calCard" aria-label="Calendar">
-      <header class="calHeader">
-        <button class="calNav" id="prevBtn" type="button" aria-label="Previous month">◀</button>
-        <div class="calTitle" id="calTitle"></div>
-        <button class="calNav" id="nextBtn" type="button" aria-label="Next month">▶</button>
-      </header>
+    <!-- RIGHT: CALENDAR -->
+    <section class="right" aria-label="Calendar">
+      <div class="monthTitle" id="monthTitle"></div>
 
       <div class="dowRow" aria-hidden="true">
-        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+        <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
       </div>
 
-      <div class="grid" id="calGrid" role="grid" aria-label="Month grid"></div>
+      <div class="calGrid" id="calGrid" role="grid" aria-label="Month grid"></div>
     </section>
   </main>
 
